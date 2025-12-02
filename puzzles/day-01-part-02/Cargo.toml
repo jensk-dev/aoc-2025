@@ -1,4 +1,4 @@
 [package]
-name = "day-02-part-02"
+name = "day-01-part-02"
 version = { workspace = true }
 edition = { workspace = true }
