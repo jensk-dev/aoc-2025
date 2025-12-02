@@ -1,36 +1,36 @@
-use std::{fs::File, io::{BufRead, Read}};
+use std::{fs::File, io::BufRead};
 
 fn main() {
     let working_dir = std::env::current_dir().unwrap();
     let path = format!("{}/puzzles/day-02-part-01/input.txt", working_dir.display());
     let f = File::open(path).unwrap();
     let f = std::io::BufReader::new(f);
-    let input = f.lines().nth(0).unwrap().unwrap();
+    let input = f.lines().next().unwrap().unwrap();
 
     let sum = solve(&input);
 
-    println!(
-        "sum of sequences: {}",
-        sum
-    );
+    println!("sum of sequences: {}", sum);
 }
 
-pub fn solve<'a, S>(input: &'a S) -> u64
-where S: AsRef<str> + ?Sized {
+pub fn solve<S>(input: &S) -> u64
+where
+    S: AsRef<str> + ?Sized,
+{
     parse_string_of_ranges(input)
-        .map(|r|
+        .map(|r| {
             r.into_inner()
-            .into_iter()
-            .filter(|idx| {
-                let digits = calculate_digits(*idx);
+                .filter(|idx| {
+                    let digits = calculate_digits(*idx);
 
-                if digits % 2 != 0 {
-                    return false;
-                }
+                    if !digits.is_multiple_of(2) {
+                        return false;
+                    }
 
-                find_pattern(*idx, digits)
-            }).sum::<u64>()
-        ).sum::<u64>()
+                    find_pattern(*idx, digits)
+                })
+                .sum::<u64>()
+        })
+        .sum::<u64>()
 }
 
 fn parse_string_of_ranges<'a, S>(input: &'a S) -> impl Iterator<Item = Range> + 'a
@@ -50,7 +50,7 @@ fn calculate_digits(n: u64) -> u32 {
     if n == 0 {
         return d;
     }
-    
+
     loop {
         let rem = n / 10;
 
@@ -66,15 +66,12 @@ fn calculate_digits(n: u64) -> u32 {
 // uses the geometric series formula in combination with proper divisors
 // to attempt and extract a pattern for every divisor of the length of digits of the number.
 // it then uses the geometric series multiplier to check if the number matches the pattern
-// for the given repetitions  
-fn find_pattern(
-    number: u64,
-    digits: u32
-) -> bool {
+// for the given repetitions
+fn find_pattern(number: u64, digits: u32) -> bool {
     // digits = 6
     proper_divisors(digits)
         // pattern_length = 3
-        .any(move |pattern_length| { 
+        .any(move |pattern_length| {
             // repetitions = 6 / 3 = 2
             let repetitions = digits / pattern_length;
 
@@ -83,11 +80,11 @@ fn find_pattern(
             }
 
             // pattern_base = 10 ^ 3 = 1000
-            let pattern_base = (10 as u64).pow(pattern_length);
+            let pattern_base = 10_u64.pow(pattern_length);
             // pattern = 123123 / 1000 = 123
             let pattern = number % pattern_base;
             // multiplier = (1000 ^ 2 - 1) / (1000 - 1) = 999999 / 999 = 1001
-            let multiplier = (pattern_base.pow( repetitions) - 1) / (pattern_base - 1);
+            let multiplier = (pattern_base.pow(repetitions) - 1) / (pattern_base - 1);
             // 123 * 1001 = 123123
             pattern * multiplier == number
         })
@@ -95,15 +92,15 @@ fn find_pattern(
 
 fn proper_divisors(n: u32) -> impl Iterator<Item = u32> {
     let limit = n / 2;
-    (1..=limit).filter(move |&d| n % d == 0)
+    (1..=limit).filter(move |&d| n.is_multiple_of(d))
 }
 
 #[derive(Debug, Eq, PartialEq)]
 struct Range {
-    inner: std::ops::RangeInclusive<u64>
+    inner: std::ops::RangeInclusive<u64>,
 }
 
-impl Range { 
+impl Range {
     pub fn into_inner(self) -> std::ops::RangeInclusive<u64> {
         self.inner
     }
@@ -129,7 +126,9 @@ impl TryFrom<&str> for Range {
             return Err(format!("Start of range greater than end: {}", value));
         }
 
-        Ok(Range { inner: std::ops::RangeInclusive::new(start, end) })
+        Ok(Range {
+            inner: std::ops::RangeInclusive::new(start, end),
+        })
     }
 }
 
@@ -205,7 +204,12 @@ mod tests {
 
         assert!(range.is_ok());
         let range = range.unwrap();
-        assert_eq!(range, Range { inner: std::ops::RangeInclusive::new(11, 22) })
+        assert_eq!(
+            range,
+            Range {
+                inner: std::ops::RangeInclusive::new(11, 22)
+            }
+        )
     }
 
     #[test]

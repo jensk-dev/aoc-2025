@@ -13,13 +13,13 @@ fn main() {
 }
 
 fn solve(reader: impl BufRead) -> usize {
-     let mut dial = Dial::new();
+    let mut dial = Dial::new();
 
     let mut nr_of_turns_to_zero = 0;
 
     for line in reader.lines() {
         let line = line.unwrap();
-        
+
         if line.is_empty() {
             continue;
         }
@@ -44,12 +44,13 @@ impl TryFrom<String> for Turn {
             "L" => Direction::CounterClockwise,
             _ => return Err(format!("Invalid direction: {}", &value[0..1])),
         };
-        
-        let steps: usize = value[1..].parse().map_err(|e| format!("Invalid steps: {}", e))?;
+
+        let steps: usize = value[1..]
+            .parse()
+            .map_err(|e| format!("Invalid steps: {}", e))?;
         Ok(Turn::new(direction, steps))
     }
 }
-
 
 #[derive(Debug)]
 pub struct Turn {
@@ -64,7 +65,13 @@ impl Turn {
 }
 
 pub struct Dial {
-    position: u8
+    position: u8,
+}
+
+impl Default for Dial {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Dial {
@@ -74,12 +81,12 @@ impl Dial {
 
     pub fn turn(self, turn: &Turn) -> Self {
         match turn.direction {
-            Direction::Clockwise => {
-                Self { position: ((self.position as usize + turn.steps) % 100) as u8 }
-            }
-            Direction::CounterClockwise => {
-                Self { position: ((self.position as usize + 100 - turn.steps % 100) % 100) as u8 }
-            }
+            Direction::Clockwise => Self {
+                position: ((self.position as usize + turn.steps) % 100) as u8,
+            },
+            Direction::CounterClockwise => Self {
+                position: ((self.position as usize + 100 - turn.steps % 100) % 100) as u8,
+            },
         }
     }
 
@@ -99,56 +106,80 @@ mod tests {
     #[test]
     fn dial_turns_left() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::CounterClockwise, steps: 10 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::CounterClockwise,
+            steps: 10,
+        });
         assert_eq!(dial.current_position(), 40);
     }
 
     #[test]
     fn dial_turns_right() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::Clockwise, steps: 10 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::Clockwise,
+            steps: 10,
+        });
         assert_eq!(dial.current_position(), 60);
     }
 
     #[test]
     fn dial_turns_left_with_overflow() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::CounterClockwise, steps: 60 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::CounterClockwise,
+            steps: 60,
+        });
         assert_eq!(dial.current_position(), 90);
     }
 
     #[test]
     fn dial_turns_right_with_overflow() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::Clockwise, steps: 60 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::Clockwise,
+            steps: 60,
+        });
         assert_eq!(dial.current_position(), 10);
     }
 
     #[test]
     fn dial_cannot_reach_100_through_clockwise_turn() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::Clockwise, steps: 50 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::Clockwise,
+            steps: 50,
+        });
         assert_eq!(dial.current_position(), 0);
     }
 
-        #[test]
+    #[test]
     fn dial_cannot_reach_100_through_counter_clockwise_turn() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::CounterClockwise, steps: 50 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::CounterClockwise,
+            steps: 50,
+        });
         assert_eq!(dial.current_position(), 0);
     }
-    
+
     #[test]
     fn dial_can_reach_0_through_clockwise_turn() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::Clockwise, steps: 50 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::Clockwise,
+            steps: 50,
+        });
         assert_eq!(dial.current_position(), 0);
     }
 
     #[test]
     fn dial_can_reach_0_through_counter_clockwise_turn() {
         let dial = super::Dial::new();
-        let dial = dial.turn(&super::Turn { direction: super::Direction::CounterClockwise, steps: 50 });
+        let dial = dial.turn(&super::Turn {
+            direction: super::Direction::CounterClockwise,
+            steps: 50,
+        });
         assert_eq!(dial.current_position(), 0);
     }
 

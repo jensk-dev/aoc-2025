@@ -55,6 +55,12 @@ pub struct TrackingDial {
     revolutions: usize,
 }
 
+impl Default for TrackingDial {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrackingDial {
     #[inline]
     const fn n() -> usize {
@@ -71,7 +77,7 @@ impl TrackingDial {
     pub fn turn(&mut self, direction: &Direction) {
         match direction {
             Direction::Clockwise(steps) => self.turn_clockwise(steps),
-            Direction::CounterClockwise(steps) => self.turn_counter_clockwise(steps)
+            Direction::CounterClockwise(steps) => self.turn_counter_clockwise(steps),
         }
     }
 
@@ -122,7 +128,7 @@ mod tests {
         dial.turn(&direction);
         assert_eq!(dial.current_position(), 0);
         assert_eq!(dial.revolutions, 1);
-        
+
         dial.turn(&Direction::CounterClockwise(5));
         assert_eq!(dial.current_position(), 95);
         assert_eq!(dial.revolutions, 1);
@@ -136,7 +142,7 @@ mod tests {
         dial.turn(&direction);
         assert_eq!(dial.current_position(), 0);
         assert_eq!(dial.revolutions, 1);
-        
+
         dial.turn(&Direction::Clockwise(105));
         assert_eq!(dial.current_position(), 5);
         assert_eq!(dial.revolutions, 2);
