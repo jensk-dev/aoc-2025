@@ -41,23 +41,8 @@ where
 }
 
 fn calculate_digits(n: u64) -> u32 {
-    let mut n = n;
-    let mut d = 1;
-
-    if n == 0 {
-        return d;
-    }
-
-    loop {
-        let rem = n / 10;
-
-        if rem == 0 {
-            return d;
-        }
-
-        n = rem;
-        d += 1;
-    }
+    if n == 0 { return 1; }
+    n.ilog10() + 1
 }
 
 // uses the geometric series formula in combination with proper divisors
