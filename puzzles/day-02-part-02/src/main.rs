@@ -87,17 +87,12 @@ impl TryFrom<&str> for Range {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let parts: Vec<&str> = value.split('-').collect();
-        if parts.len() != 2 {
-            return Err(format!("Invalid range format: {}", value));
-        }
+        let (start_str, end_str) = value
+            .split_once('-')
+            .ok_or_else(|| format!("Invalid range format: {}", value))?;
 
-        let start: u64 = parts[0]
-            .parse()
-            .map_err(|e| format!("Invalid start of range: {}", e))?;
-        let end: u64 = parts[1]
-            .parse()
-            .map_err(|e| format!("Invalid end of range: {}", e))?;
+        let start: u64 = start_str.parse().map_err(|e| format!("Invalid start: {}", e))?;
+        let end: u64 = end_str.parse().map_err(|e| format!("Invalid end: {}", e))?;
 
         if start > end {
             return Err(format!("Start of range greater than end: {}", value));
