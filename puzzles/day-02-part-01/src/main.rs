@@ -1,5 +1,18 @@
+use std::{fs::File, io::{BufRead, Read}};
+
 fn main() {
-    println!("Hello, world!");
+    let working_dir = std::env::current_dir().unwrap();
+    let path = format!("{}/puzzles/day-02-part-01/input.txt", working_dir.display());
+    let f = File::open(path).unwrap();
+    let f = std::io::BufReader::new(f);
+    let input = f.lines().nth(0).unwrap().unwrap();
+
+    let sum = solve(&input);
+
+    println!(
+        "sum of sequences: {}",
+        sum
+    );
 }
 
 pub fn solve<'a, S>(input: &'a S) -> u64
@@ -10,6 +23,10 @@ where S: AsRef<str> + ?Sized {
             .into_iter()
             .filter(|idx| {
                 let digits = calculate_digits(*idx);
+
+                if digits % 2 != 0 {
+                    return false;
+                }
 
                 find_pattern(*idx, digits)
             }).sum::<u64>()
@@ -60,6 +77,11 @@ fn find_pattern(
         .any(move |pattern_length| { 
             // repetitions = 6 / 3 = 2
             let repetitions = digits / pattern_length;
+
+            if repetitions != 2 {
+                return false;
+            }
+
             // pattern_base = 10 ^ 3 = 1000
             let pattern_base = (10 as u64).pow(pattern_length);
             // pattern = 123123 / 1000 = 123
@@ -78,11 +100,11 @@ fn proper_divisors(n: u32) -> impl Iterator<Item = u32> {
 
 #[derive(Debug, Eq, PartialEq)]
 struct Range {
-    inner: std::ops::Range<u64>
+    inner: std::ops::RangeInclusive<u64>
 }
 
 impl Range { 
-    pub fn into_inner(self) -> std::ops::Range<u64> {
+    pub fn into_inner(self) -> std::ops::RangeInclusive<u64> {
         self.inner
     }
 }
@@ -107,7 +129,7 @@ impl TryFrom<&str> for Range {
             return Err(format!("Start of range greater than end: {}", value));
         }
 
-        Ok(Range { inner: std::ops::Range { start: start, end: end} })
+        Ok(Range { inner: std::ops::RangeInclusive::new(start, end) })
     }
 }
 
@@ -183,7 +205,7 @@ mod tests {
 
         assert!(range.is_ok());
         let range = range.unwrap();
-        assert_eq!(range, Range { inner: std::ops::Range { start: 11, end: 22 }})
+        assert_eq!(range, Range { inner: std::ops::RangeInclusive::new(11, 22) })
     }
 
     #[test]
