@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 fn main() {
     let working_dir = std::env::current_dir().unwrap();
-    let path = format!("{}/puzzles/one/input.txt", working_dir.display());
+    let path = format!("{}/puzzles/day-01-part-01/input.txt", working_dir.display());
     let f = File::open(path).unwrap();
     let f = std::io::BufReader::new(f);
 
