@@ -8,3 +8,4 @@ package.edition = "2024"
 
 [workspace.dependencies]
 rstest = "0.26.1"
+rayon = "1.11.0"

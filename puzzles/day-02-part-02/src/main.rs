@@ -1,4 +1,5 @@
 use std::{fs::File, io::BufRead};
+use rayon::prelude::*;
 
 fn main() {
     let working_dir = std::env::current_dir().unwrap();
@@ -19,6 +20,7 @@ where
     parse_string_of_ranges(input)
         .map(|r| {
             r.into_inner()
+                .into_par_iter()
                 .filter(|idx| {
                     let digits = calculate_digits(*idx);
                     find_pattern(*idx, digits)
