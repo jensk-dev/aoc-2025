@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 fn main() {
     let working_dir = std::env::current_dir().unwrap();
-    let path = format!("{}/puzzles/day-02-part-02/input.txt", working_dir.display());
+    let path = format!("{}/puzzles/day-01-part-02/input.txt", working_dir.display());
     let f = File::open(path).unwrap();
     let f = std::io::BufReader::new(f);
 
@@ -75,6 +75,7 @@ impl TrackingDial {
         }
     }
 
+    #[inline]
     fn turn_clockwise(&mut self, steps: &usize) {
         let n = Self::n();
         let actual = self.position;
@@ -86,6 +87,7 @@ impl TrackingDial {
         self.revolutions += revolutions;
     }
 
+    #[inline]
     fn turn_counter_clockwise(&mut self, steps: &usize) {
         let n = Self::n();
         let actual = (n - self.position) % n;
