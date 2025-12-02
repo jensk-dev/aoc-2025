@@ -1,6 +1,16 @@
 use std::{fs::File, io::BufRead};
 use rayon::prelude::*;
 
+// u64 max is 18_446_744_073_709_551_615
+const POWERS_OF_10: [u64; 20] = [
+    1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000,
+    100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000,
+    1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000,
+    1_000_000_000_000_000, 10_000_000_000_000_000,
+    100_000_000_000_000_000, 1_000_000_000_000_000_000,
+    10_000_000_000_000_000_000,
+];
+
 fn main() {
     let working_dir = std::env::current_dir().unwrap();
     let path = format!("{}/puzzles/day-02-part-02/input.txt", working_dir.display());
@@ -57,11 +67,11 @@ fn find_pattern(number: u64, digits: u32) -> bool {
             // repetitions = 6 / 3 = 2
             let repetitions = digits / pattern_length;
             // pattern_base = 10 ^ 3 = 1000
-            let pattern_base = 10_u64.pow(pattern_length);
+            let pattern_base = POWERS_OF_10[pattern_length as usize];
             // pattern = 123123 / 1000 = 123
             let pattern = number % pattern_base;
             // multiplier = (1000 ^ 2 - 1) / (1000 - 1) = 999999 / 999 = 1001
-            let multiplier = (pattern_base.pow(repetitions) - 1) / (pattern_base - 1);
+            let multiplier = (POWERS_OF_10[(pattern_length * repetitions) as usize] - 1) / (pattern_base - 1);
             // 123 * 1001 = 123123
             pattern * multiplier == number
         })
