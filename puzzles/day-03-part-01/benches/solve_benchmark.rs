@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use day_02_part_02::solve;
+use day_03_part_01::solve;
 
 fn bench_solve(c: &mut Criterion) {
     let input = include_str!("../input.txt").lines().next().unwrap();

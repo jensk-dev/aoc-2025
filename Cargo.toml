@@ -1,13 +1,19 @@
 [workspace]
 resolver = "3"
-members = ["puzzles/day-01-part-01", "puzzles/day-01-part-02", "puzzles/day-02-part-01", "puzzles/day-02-part-02"]
+members = ["puzzles/day-01-part-01", "puzzles/day-01-part-02", "puzzles/day-02-part-01", "puzzles/day-02-part-02", "puzzles/day-03-part-01"]
 
-
-package.version = "0.1.0"
-package.edition = "2024"
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
 
 [workspace.dependencies]
 rstest = "0.26.1"
 rayon = "1.11.0"
 mimalloc = "0.1.48"
 criterion = "0.6"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+overflow-checks = false
