@@ -3,8 +3,20 @@ name = "day-02-part-02"
 version.workspace = true
 edition.workspace = true
 
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+overflow-checks = false
+
 [dependencies]
 rayon.workspace = true
+mimalloc = { workspace = true, features = ["v3"] }
 
 [dev-dependencies]
 rstest.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "solve_benchmark"
+harness = false
