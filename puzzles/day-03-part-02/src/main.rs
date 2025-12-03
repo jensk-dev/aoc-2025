@@ -1,7 +1,4 @@
-use std::{
-    fs::read_to_string,
-    time::Instant,
-};
+use std::{fs::read_to_string, time::Instant};
 
 use day_03_part_02::solve;
 
