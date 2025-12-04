@@ -17,23 +17,20 @@ struct PileOfPaperRolls {
 impl PileOfPaperRolls {
     const SIMD_WIDTH: usize = 32;
     const PROC_CELLS: usize = Self::SIMD_WIDTH - 2;
-    const VALIDITY_CHECK: u32 = 0x3FFFFFFF;  // bits 0-29 (30 cells); bit 30-31 niet meegenomen voor rechter boundary
+    const VALIDITY_CHECK: u32 = 0x3FFFFFFF; // bits 0-29 (30 cells); bit 30-31 niet meegenomen voor rechter boundary
 
     fn from_str(grid: &[u8]) -> Self {
-        let width = grid
-            .iter()
-            .position(|&b| b == b'\n')
-            .unwrap_or(grid.len());
+        let width = grid.iter().position(|&b| b == b'\n').unwrap_or(grid.len());
 
         let stride = width + 2;
 
         let padded_width = (stride + Self::SIMD_WIDTH - 1) & !(Self::SIMD_WIDTH - 1);
-        
+
         let height = grid.len() / (width + 1); // +1 for newline
         let padded_height = height + 2;
 
         let mut data = vec![b'.'; padded_width * padded_height];
-        
+
         for (y, line) in grid.split(|&b| b == b'\n').enumerate() {
             // if eof line:
             if line.is_empty() {
@@ -57,39 +54,49 @@ impl PileOfPaperRolls {
         unsafe { self.simd_convolution(b'@', b'@', 4) }
     }
 
-    fn scalar_convolution(&self, center_value: u8, neighbour_value: u8, max_neighbours: usize) -> usize {
+    fn scalar_convolution(
+        &self,
+        center_value: u8,
+        neighbour_value: u8,
+        max_neighbours: usize,
+    ) -> usize {
         let mut count = 0;
-        
+
         for y in 1..=self.height {
             for x in 1..=self.width {
                 let idx = y * self.padded_width + x;
-                
+
                 // Check center cell
                 if self.grid[idx] != center_value {
                     continue;
                 }
-                
+
                 // Count matching neighbors
                 let mut neighbors = 0;
                 neighbors += (self.grid[idx - self.padded_width - 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx - self.padded_width]     == neighbour_value) as usize;
+                neighbors += (self.grid[idx - self.padded_width] == neighbour_value) as usize;
                 neighbors += (self.grid[idx - self.padded_width + 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx - 1]                     == neighbour_value) as usize;
-                neighbors += (self.grid[idx + 1]                     == neighbour_value) as usize;
+                neighbors += (self.grid[idx - 1] == neighbour_value) as usize;
+                neighbors += (self.grid[idx + 1] == neighbour_value) as usize;
                 neighbors += (self.grid[idx + self.padded_width - 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx + self.padded_width]     == neighbour_value) as usize;
+                neighbors += (self.grid[idx + self.padded_width] == neighbour_value) as usize;
                 neighbors += (self.grid[idx + self.padded_width + 1] == neighbour_value) as usize;
-                
+
                 if neighbors < max_neighbours {
                     count += 1;
                 }
             }
         }
-        
+
         count
     }
 
-    unsafe fn simd_convolution(&self, center_value: u8, neighbour_value: u8, max_neighbours: usize) -> usize {
+    unsafe fn simd_convolution(
+        &self,
+        center_value: u8,
+        neighbour_value: u8,
+        max_neighbours: usize,
+    ) -> usize {
         if self.width < Self::PROC_CELLS {
             return self.scalar_convolution(center_value, neighbour_value, max_neighbours);
         }
@@ -101,46 +108,63 @@ impl PileOfPaperRolls {
             while x + Self::PROC_CELLS <= self.width {
                 unsafe {
                     let ptr = self.grid.as_ptr();
-                    
+
                     // todo: kijken of ik _mm256_slli_si256 en _mm256_srli_si256 kan gebruiken om te byte shiften in plaats van 3 loads te doen per rij
 
                     // laad de registers uit de grid
-                    let above_left   = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + x - 1) as *const __m256i);
-                    let above_center = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + x) as *const __m256i);
-                    let above_right  = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + x + 1) as *const __m256i);
-                    let center_left  = _mm256_loadu_si256(ptr.add(y * self.padded_width + x - 1) as *const __m256i);
-                    let center_mid   = _mm256_loadu_si256(ptr.add(y * self.padded_width + x) as *const __m256i);
-                    let center_right = _mm256_loadu_si256(ptr.add(y * self.padded_width + x + 1) as *const __m256i);
-                    let below_left   = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + x - 1) as *const __m256i);
-                    let below_center = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + x) as *const __m256i);
-                    let below_right  = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + x + 1) as *const __m256i);
+                    let above_left = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + x - 1) as *const __m256i,
+                    );
+                    let above_center = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + x) as *const __m256i
+                    );
+                    let above_right = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + x + 1) as *const __m256i,
+                    );
+                    let center_left = _mm256_loadu_si256(
+                        ptr.add(y * self.padded_width + x - 1) as *const __m256i
+                    );
+                    let center_mid =
+                        _mm256_loadu_si256(ptr.add(y * self.padded_width + x) as *const __m256i);
+                    let center_right = _mm256_loadu_si256(
+                        ptr.add(y * self.padded_width + x + 1) as *const __m256i
+                    );
+                    let below_left = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + x - 1) as *const __m256i,
+                    );
+                    let below_center = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + x) as *const __m256i
+                    );
+                    let below_right = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + x + 1) as *const __m256i,
+                    );
 
                     // dit stelt een register met 16 bytes in op de waarde van neighbour_value
                     let neighbour_mask = _mm256_set1_epi8(neighbour_value as i8);
 
                     // vergelijk
-                    let above_left_eq   = _mm256_cmpeq_epi8(above_left, neighbour_mask);
+                    let above_left_eq = _mm256_cmpeq_epi8(above_left, neighbour_mask);
                     let above_center_eq = _mm256_cmpeq_epi8(above_center, neighbour_mask);
-                    let above_right_eq  = _mm256_cmpeq_epi8(above_right, neighbour_mask);
-                    let center_left_eq  = _mm256_cmpeq_epi8(center_left, neighbour_mask);
+                    let above_right_eq = _mm256_cmpeq_epi8(above_right, neighbour_mask);
+                    let center_left_eq = _mm256_cmpeq_epi8(center_left, neighbour_mask);
                     let center_right_eq = _mm256_cmpeq_epi8(center_right, neighbour_mask);
-                    let below_left_eq   = _mm256_cmpeq_epi8(below_left, neighbour_mask);
+                    let below_left_eq = _mm256_cmpeq_epi8(below_left, neighbour_mask);
                     let below_center_eq = _mm256_cmpeq_epi8(below_center, neighbour_mask);
-                    let below_right_eq  = _mm256_cmpeq_epi8(below_right, neighbour_mask);
+                    let below_right_eq = _mm256_cmpeq_epi8(below_right, neighbour_mask);
 
                     // maak een mask met alle bits op 1
                     let one_mask = _mm256_set1_epi8(1);
 
                     // gebruik bitwise and om de bits te pakken
                     // nu hebben de we hoeveelheid neighbours per cel
-                    let above_left_bit   = _mm256_and_si256(above_left_eq, one_mask);
+                    let above_left_bit = _mm256_and_si256(above_left_eq, one_mask);
                     let above_center_bit = _mm256_and_si256(above_center_eq, one_mask);
-                    let above_right_bit  = _mm256_and_si256(above_right_eq, one_mask);
-                    let center_left_bit  = _mm256_and_si256(center_left_eq, one_mask);
+                    let above_right_bit = _mm256_and_si256(above_right_eq, one_mask);
+                    let center_left_bit = _mm256_and_si256(center_left_eq, one_mask);
                     let center_right_bit = _mm256_and_si256(center_right_eq, one_mask);
-                    let below_left_bit   = _mm256_and_si256(below_left_eq, one_mask);
+                    let below_left_bit = _mm256_and_si256(below_left_eq, one_mask);
                     let below_center_bit = _mm256_and_si256(below_center_eq, one_mask);
-                    let below_right_bit  = _mm256_and_si256(below_right_eq, one_mask);
+                    let below_right_bit = _mm256_and_si256(below_right_eq, one_mask);
 
                     // tel alles op
                     let sum = _mm256_add_epi8(above_left_bit, above_center_bit);
@@ -153,7 +177,7 @@ impl PileOfPaperRolls {
 
                     // register met de max waarde
                     let max_neighbours_mask = _mm256_set1_epi8(max_neighbours as i8);
-                    let neighbours_threshold =  _mm256_cmpgt_epi8(max_neighbours_mask, sum); // max_neighbours > sum van neighbours
+                    let neighbours_threshold = _mm256_cmpgt_epi8(max_neighbours_mask, sum); // max_neighbours > sum van neighbours
 
                     // check de center cel zelf ook op de juiste waarde
                     let center_mask = _mm256_set1_epi8(center_value as i8);
@@ -174,49 +198,67 @@ impl PileOfPaperRolls {
 
                 let remaining = self.width - x + 1;
                 let final_x = x;
-                
+
                 unsafe {
                     let ptr = self.grid.as_ptr();
-                    
+
                     // todo: kijken of ik _mm256_slli_si256 en _mm256_srli_si256 kan gebruiken om te byte shiften in plaats van 3 loads te doen per rij
 
                     // laad de registers uit de grid
-                    let above_left   = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + final_x - 1) as *const __m256i);
-                    let above_center = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + final_x) as *const __m256i);
-                    let above_right  = _mm256_loadu_si256(ptr.add((y - 1) * self.padded_width + final_x + 1) as *const __m256i);
-                    let center_left  = _mm256_loadu_si256(ptr.add(y * self.padded_width + final_x - 1) as *const __m256i);
-                    let center_mid   = _mm256_loadu_si256(ptr.add(y * self.padded_width + final_x) as *const __m256i);
-                    let center_right = _mm256_loadu_si256(ptr.add(y * self.padded_width + final_x + 1) as *const __m256i);
-                    let below_left   = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + final_x - 1) as *const __m256i);
-                    let below_center = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + final_x) as *const __m256i);
-                    let below_right  = _mm256_loadu_si256(ptr.add((y + 1) * self.padded_width + final_x + 1) as *const __m256i);
+                    let above_left = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + final_x - 1) as *const __m256i,
+                    );
+                    let above_center = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + final_x) as *const __m256i,
+                    );
+                    let above_right = _mm256_loadu_si256(
+                        ptr.add((y - 1) * self.padded_width + final_x + 1) as *const __m256i,
+                    );
+                    let center_left = _mm256_loadu_si256(
+                        ptr.add(y * self.padded_width + final_x - 1) as *const __m256i,
+                    );
+                    let center_mid = _mm256_loadu_si256(
+                        ptr.add(y * self.padded_width + final_x) as *const __m256i
+                    );
+                    let center_right = _mm256_loadu_si256(
+                        ptr.add(y * self.padded_width + final_x + 1) as *const __m256i,
+                    );
+                    let below_left = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + final_x - 1) as *const __m256i,
+                    );
+                    let below_center = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + final_x) as *const __m256i,
+                    );
+                    let below_right = _mm256_loadu_si256(
+                        ptr.add((y + 1) * self.padded_width + final_x + 1) as *const __m256i,
+                    );
 
                     // dit stelt een register met 16 bytes in op de waarde van neighbour_value
                     let neighbour_mask = _mm256_set1_epi8(neighbour_value as i8);
 
                     // vergelijk
-                    let above_left_eq   = _mm256_cmpeq_epi8(above_left, neighbour_mask);
+                    let above_left_eq = _mm256_cmpeq_epi8(above_left, neighbour_mask);
                     let above_center_eq = _mm256_cmpeq_epi8(above_center, neighbour_mask);
-                    let above_right_eq  = _mm256_cmpeq_epi8(above_right, neighbour_mask);
-                    let center_left_eq  = _mm256_cmpeq_epi8(center_left, neighbour_mask);
+                    let above_right_eq = _mm256_cmpeq_epi8(above_right, neighbour_mask);
+                    let center_left_eq = _mm256_cmpeq_epi8(center_left, neighbour_mask);
                     let center_right_eq = _mm256_cmpeq_epi8(center_right, neighbour_mask);
-                    let below_left_eq   = _mm256_cmpeq_epi8(below_left, neighbour_mask);
+                    let below_left_eq = _mm256_cmpeq_epi8(below_left, neighbour_mask);
                     let below_center_eq = _mm256_cmpeq_epi8(below_center, neighbour_mask);
-                    let below_right_eq  = _mm256_cmpeq_epi8(below_right, neighbour_mask);
+                    let below_right_eq = _mm256_cmpeq_epi8(below_right, neighbour_mask);
 
                     // maak een mask met alle bits op 1
                     let one_mask = _mm256_set1_epi8(1);
 
                     // gebruik bitwise and om de bits te pakken
                     // nu hebben de we hoeveelheid neighbours per cel
-                    let above_left_bit   = _mm256_and_si256(above_left_eq, one_mask);
+                    let above_left_bit = _mm256_and_si256(above_left_eq, one_mask);
                     let above_center_bit = _mm256_and_si256(above_center_eq, one_mask);
-                    let above_right_bit  = _mm256_and_si256(above_right_eq, one_mask);
-                    let center_left_bit  = _mm256_and_si256(center_left_eq, one_mask);
+                    let above_right_bit = _mm256_and_si256(above_right_eq, one_mask);
+                    let center_left_bit = _mm256_and_si256(center_left_eq, one_mask);
                     let center_right_bit = _mm256_and_si256(center_right_eq, one_mask);
-                    let below_left_bit   = _mm256_and_si256(below_left_eq, one_mask);
+                    let below_left_bit = _mm256_and_si256(below_left_eq, one_mask);
                     let below_center_bit = _mm256_and_si256(below_center_eq, one_mask);
-                    let below_right_bit  = _mm256_and_si256(below_right_eq, one_mask);
+                    let below_right_bit = _mm256_and_si256(below_right_eq, one_mask);
 
                     // tel alles op
                     let sum = _mm256_add_epi8(above_left_bit, above_center_bit);
@@ -229,7 +271,7 @@ impl PileOfPaperRolls {
 
                     // register met de max waarde
                     let max_neighbours_mask = _mm256_set1_epi8(max_neighbours as i8);
-                    let neighbours_threshold =  _mm256_cmpgt_epi8(max_neighbours_mask, sum); // max_neighbours > sum van neighbours
+                    let neighbours_threshold = _mm256_cmpgt_epi8(max_neighbours_mask, sum); // max_neighbours > sum van neighbours
 
                     // check de center cel zelf ook op de juiste waarde
                     let center_mask = _mm256_set1_epi8(center_value as i8);
