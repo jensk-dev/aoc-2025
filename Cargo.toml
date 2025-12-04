@@ -8,6 +8,7 @@ members = [
     "puzzles/day-03-part-01",
     "puzzles/day-03-part-02",
     "puzzles/day-04-part-01",
+    "puzzles/day-04-part-02",
 ]
 
 [workspace.package]

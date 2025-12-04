@@ -3,7 +3,7 @@ use std::arch::x86_64::*;
 
 pub fn solve(input: &str) -> usize {
     let pile = PileOfPaperRolls::from_str(input.as_bytes());
-    unsafe { pile.simd_convolution(b'@', b'@', 4) }
+    pile.count_accessible_rolls()
 }
 
 struct PileOfPaperRolls {
@@ -11,7 +11,6 @@ struct PileOfPaperRolls {
     width: usize,
     height: usize,
     padded_width: usize,
-    padded_height: usize,
 }
 
 impl PileOfPaperRolls {
@@ -45,7 +44,6 @@ impl PileOfPaperRolls {
             width,
             height,
             padded_width,
-            padded_height,
         }
     }
 
@@ -308,14 +306,6 @@ mod tests {
         assert_eq!(result, expected);
     }
 
-    #[rstest]
-    #[case("..@..\n.@@@.\n..@..\n", 5)]
-    #[case("@@@\n@@@\n@@@\n", 4)]
-    #[case(".....\n.....\n.....\n", 0)]
-    fn pile_count_accessible_rolls(#[case] grid: &str, #[case] expected: usize) {
-        todo!();
-    }
-
     #[test]
     fn pile_from_str() {
         let input = "..@..\n.@@@.\n..@..\n";
@@ -323,6 +313,5 @@ mod tests {
         assert_eq!(pile.width, 5);
         assert_eq!(pile.height, 3);
         assert_eq!(pile.padded_width, 32);
-        assert_eq!(pile.padded_height, 5);
     }
 }
