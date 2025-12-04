@@ -7,7 +7,7 @@ fn bench_solve(c: &mut Criterion) {
     let input = read_to_string("input.txt").unwrap();
     c.bench_function("solve", |b| b.iter(|| solve(std::hint::black_box(&input))));
     let answer = solve(&input);
-    assert_eq!(answer, 1445);
+    assert_eq!(answer, 8317);
 }
 
 criterion_group!(benches, bench_solve);

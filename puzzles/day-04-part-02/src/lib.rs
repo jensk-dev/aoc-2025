@@ -1,9 +1,20 @@
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+use wide::{CmpEq, CmpGt, i8x32};
 
 pub fn solve(input: &str) -> usize {
-    let pile = PileOfPaperRolls::from_str(input.as_bytes());
-    unsafe { pile.simd_convolution(b'@', b'@', 4) }
+    let mut pile = PileOfPaperRolls::from_str(input.as_bytes());
+    let params = ConvolutionParams {
+        center: b'@',
+        neighbour: b'@',
+        max_neighbours: 4,
+    };
+    pile.remove_all_accessible(&params)
+}
+
+#[derive(Clone, Copy)]
+struct ConvolutionParams {
+    center: u8,
+    neighbour: u8,
+    max_neighbours: usize,
 }
 
 struct PileOfPaperRolls {
@@ -42,174 +53,241 @@ impl PileOfPaperRolls {
         }
     }
 
-    fn scalar_convolution(
-        &self,
-        center_value: u8,
-        neighbour_value: u8,
-        max_neighbours: usize,
+    #[inline(always)]
+    fn simd_kernel_convolution_remove(
+        &mut self,
+        x: usize,
+        y: usize,
+        params: &ConvolutionParams,
+        validity_mask: u32,
     ) -> usize {
-        let mut count = 0;
+        let row_offset = |dy: usize| (y + dy - 1) * self.padded_width + x;
+        let load = |grid: &[u8], offset: usize| {
+            let slice: &[i8; 32] = grid[offset..offset + 32]
+                .try_into()
+                .map(|arr: &[u8; 32]| unsafe { std::mem::transmute(arr) })
+                .unwrap();
+            i8x32::from(*slice)
+        };
 
-        for y in 1..=self.height {
-            for x in 1..=self.width {
-                let idx = y * self.padded_width + x;
+        // pak de drie horizontale rijen voor het maken van de 3x3 kernel op basis van de center cel
+        let above = row_offset(0);
+        let center = row_offset(1);
+        let below = row_offset(2);
 
-                // Check center cell
-                if self.grid[idx] != center_value {
-                    continue;
-                }
+        // laad de 3x3 kernel als SIMD vectoren
+        let neighbours = [
+            load(&self.grid, above - 1),
+            load(&self.grid, above),
+            load(&self.grid, above + 1),
+            load(&self.grid, center - 1),
+            load(&self.grid, center + 1),
+            load(&self.grid, below - 1),
+            load(&self.grid, below),
+            load(&self.grid, below + 1),
+        ];
+        let center_cells = load(&self.grid, center);
 
-                // Count matching neighbors
-                let mut neighbors = 0;
-                neighbors += (self.grid[idx - self.padded_width - 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx - self.padded_width] == neighbour_value) as usize;
-                neighbors += (self.grid[idx - self.padded_width + 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx - 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx + 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx + self.padded_width - 1] == neighbour_value) as usize;
-                neighbors += (self.grid[idx + self.padded_width] == neighbour_value) as usize;
-                neighbors += (self.grid[idx + self.padded_width + 1] == neighbour_value) as usize;
+        // maak een mask om enkel de neighbours te selecteren die overeenkomen met gegeven waarde
+        let neighbour_val = i8x32::splat(params.neighbour as i8);
+        // maak een mask om de gevonden neighbours naar 1 te converteren
+        // zodat ze opgeteld kunnen worden
+        let one = i8x32::splat(1);
 
-                if neighbors < max_neighbours {
-                    count += 1;
-                }
-            }
+        // check hoeveel buren overeenkomen met de waarde
+        // en doe vervolgens een bitwise and om het naar 1 te converteren
+        // en op te tellen
+        let neighbor_count = neighbours
+            .into_iter()
+            .map(|v| v.simd_eq(neighbour_val) & one)
+            .reduce(|a, b| a + b)
+            .unwrap();
+
+        // maak de mask die bepaalt wanneer teveel neighbours zijn gevonden
+        // en kijk of het gevonden getal onder de mask ligt
+        let max_val = i8x32::splat(params.max_neighbours as i8);
+        let under_threshold = max_val.simd_gt(neighbor_count);
+
+        // maak de mask die bepaalt of de center cel overeenkomt met de verwachte
+        // waarde
+        let center_val = i8x32::splat(params.center as i8);
+        let center_matches = center_cells.simd_eq(center_val);
+
+        // combineer de masks om het uiteindelijke resultaat te bepalen
+        let result = under_threshold & center_matches;
+        let mut mask = result.to_bitmask() & validity_mask;
+        let count = mask.count_ones() as usize;
+
+        // trucje om de cellen te verwijderen die overeenkomen met de mask
+        // aangezien we de center index nog hebben
+        // kunnen we gewoon de offsets naar rechts gebruiken voor iedere
+        // voorvoegnul die we tegenkomen in de mask
+        while mask != 0 {
+            let i = mask.trailing_zeros() as usize;
+            self.grid[center + i] = b'.';
+            mask &= mask - 1;
         }
 
         count
     }
 
-    #[inline(always)]
-    unsafe fn simd_kernel(
-        ptr: *const u8,
-        y: usize,
-        x: usize,
-        padded_width: usize,
-        center_value: u8,
-        neighbour_value: u8,
-        max_neighbours: usize,
-        validity_mask: u32,
-    ) -> usize {
-        let row = |dy: usize| (y + dy - 1) * padded_width + x;
-
-        let load = |offset: usize| unsafe { _mm256_loadu_si256(ptr.add(offset) as *const __m256i) };
-
-        let above_left = load(row(0) - 1);
-        let above_center = load(row(0));
-        let above_right = load(row(0) + 1);
-        let center_left = load(row(1) - 1);
-        let center_mid = load(row(1));
-        let center_right = load(row(1) + 1);
-        let below_left = load(row(2) - 1);
-        let below_center = load(row(2));
-        let below_right = load(row(2) + 1);
-
-        let neighbour_mask = unsafe { _mm256_set1_epi8(neighbour_value as i8) };
-        let one = unsafe { _mm256_set1_epi8(1) };
-
-        let count_if_match =
-            |v: __m256i| unsafe { _mm256_and_si256(_mm256_cmpeq_epi8(v, neighbour_mask), one) };
-
-        let sum = [
-            above_left,
-            above_center,
-            above_right,
-            center_left,
-            center_right,
-            below_left,
-            below_center,
-            below_right,
-        ]
-        .into_iter()
-        .map(count_if_match)
-        .reduce(|a, b| unsafe { _mm256_add_epi8(a, b) })
-        .unwrap();
-
-        let max_mask = unsafe { _mm256_set1_epi8(max_neighbours as i8) };
-        let under_threshold = unsafe { _mm256_cmpgt_epi8(max_mask, sum) };
-        let center_mask = unsafe { _mm256_set1_epi8(center_value as i8) };
-        let center_matches = unsafe { _mm256_cmpeq_epi8(center_mid, center_mask) };
-
-        let result = unsafe { _mm256_and_si256(under_threshold, center_matches) };
-        let mask = unsafe { _mm256_movemask_epi8(result) } as u32;
-
-        (mask & validity_mask).count_ones() as usize
-    }
-
-    unsafe fn simd_convolution(
-        &self,
-        center_value: u8,
-        neighbour_value: u8,
-        max_neighbours: usize,
-    ) -> usize {
+    fn remove_accessible(&mut self, params: &ConvolutionParams) -> usize {
         if self.width < Self::PROC_CELLS {
-            return self.scalar_convolution(center_value, neighbour_value, max_neighbours);
+            return self.scalar_remove_accessible(params);
         }
 
-        let ptr = self.grid.as_ptr();
         let mut count = 0;
 
         for y in 1..=self.height {
             let mut x = 1;
 
             while x + Self::PROC_CELLS <= self.width {
-                count += unsafe {
-                    Self::simd_kernel(
-                        ptr,
-                        y,
-                        x,
-                        self.padded_width,
-                        center_value,
-                        neighbour_value,
-                        max_neighbours,
-                        Self::VALIDITY_CHECK,
-                    )
-                };
+                count += self.simd_kernel_convolution_remove(x, y, params, Self::VALIDITY_CHECK);
                 x += Self::PROC_CELLS;
             }
 
             if x <= self.width {
                 let remaining = self.width - x + 1;
                 let remainder_mask = (1u32 << remaining) - 1;
-                count += unsafe {
-                    Self::simd_kernel(
-                        ptr,
-                        y,
-                        x,
-                        self.padded_width,
-                        center_value,
-                        neighbour_value,
-                        max_neighbours,
-                        remainder_mask,
-                    )
-                };
+                count += self.simd_kernel_convolution_remove(x, y, params, remainder_mask);
             }
         }
 
         count
     }
+
+    fn scalar_remove_accessible(&mut self, params: &ConvolutionParams) -> usize {
+        let mut count = 0;
+        let mut to_remove = Vec::new();
+
+        for y in 1..=self.height {
+            for x in 1..=self.width {
+                let idx = y * self.padded_width + x;
+
+                if self.grid[idx] != params.center {
+                    continue;
+                }
+
+                let mut neighbours = 0;
+                neighbours += (self.grid[idx - self.padded_width - 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx - self.padded_width] == params.neighbour) as usize;
+                neighbours += (self.grid[idx - self.padded_width + 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx - 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx + 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx + self.padded_width - 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx + self.padded_width] == params.neighbour) as usize;
+                neighbours += (self.grid[idx + self.padded_width + 1] == params.neighbour) as usize;
+
+                if neighbours < params.max_neighbours {
+                    to_remove.push(idx);
+                    count += 1;
+                }
+            }
+        }
+
+        for idx in to_remove {
+            self.grid[idx] = b'.';
+        }
+
+        count
+    }
+
+    fn remove_all_accessible(&mut self, params: &ConvolutionParams) -> usize {
+        let mut total = 0;
+        loop {
+            let removed = self.remove_accessible(params);
+            if removed == 0 {
+                break;
+            }
+            total += removed;
+        }
+        total
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs::read_to_string;
+
     use super::*;
+    use rstest::rstest;
 
-    #[test]
-    fn solve_example() {
-        let input = "..@@.@@@@.\n@@@.@.@.@@\n@@@@@.@.@@\n@.@@@@..@.\n@@.@@@@.@@\n.@@@@@@@.@\n.@.@.@.@@@\n@.@@@.@@@@\n.@@@@@@@@.\n@.@.@@@.@.\n";
-        let expected = 13;
+    const EXAMPLE: &str = "..@@.@@@@.\n@@@.@.@.@@\n@@@@@.@.@@\n@.@@@@..@.\n@@.@@@@.@@\n.@@@@@@@.@\n.@.@.@.@@@\n@.@@@.@@@@\n.@@@@@@@@.\n@.@.@@@.@.\n";
 
-        let pile = PileOfPaperRolls::from_str(input.as_bytes());
-        let result = pile.scalar_convolution(b'@', b'@', 4);
-        assert_eq!(result, expected);
+    #[rstest]
+    #[case(1, 13)]
+    #[case(2, 12)]
+    #[case(3, 7)]
+    #[case(4, 5)]
+    #[case(5, 2)]
+    #[case(6, 1)]
+    #[case(7, 1)]
+    #[case(8, 1)]
+    #[case(9, 1)]
+    fn removal_round(#[case] round: usize, #[case] expected_removed: usize) {
+        let mut pile = PileOfPaperRolls::from_str(EXAMPLE.as_bytes());
+        let params = ConvolutionParams {
+            center: b'@',
+            neighbour: b'@',
+            max_neighbours: 4,
+        };
+
+        for _ in 1..round {
+            pile.remove_accessible(&params);
+        }
+        assert_eq!(pile.remove_accessible(&params), expected_removed);
+    }
+
+    #[rstest]
+    #[case(EXAMPLE, 43)]
+    fn remove_all(#[case] input: &str, #[case] expected_total: usize) {
+        let mut pile = PileOfPaperRolls::from_str(input.as_bytes());
+        let params = ConvolutionParams {
+            center: b'@',
+            neighbour: b'@',
+            max_neighbours: 4,
+        };
+        assert_eq!(pile.remove_all_accessible(&params), expected_total);
     }
 
     #[test]
-    fn pile_from_str() {
-        let input = "..@..\n.@@@.\n..@..\n";
+    fn simd_matches_scalar_removal() {
+        let input = read_to_string("input.txt").unwrap();
+        let mut scalar_pile = PileOfPaperRolls::from_str(input.as_bytes());
+        let mut simd_pile = PileOfPaperRolls::from_str(input.as_bytes());
+        let params = ConvolutionParams {
+            center: b'@',
+            neighbour: b'@',
+            max_neighbours: 4,
+        };
+
+        let scalar_result = loop {
+            let removed = scalar_pile.scalar_remove_accessible(&params);
+            if removed == 0 {
+                break 0;
+            }
+        };
+        let simd_result = loop {
+            let removed = simd_pile.remove_accessible(&params);
+            if removed == 0 {
+                break 0;
+            }
+        };
+        assert_eq!(scalar_result, simd_result);
+        assert_eq!(scalar_pile.grid, simd_pile.grid);
+    }
+
+    #[rstest]
+    #[case("..@..\n.@@@.\n..@..\n", 5, 3, 32)]
+    fn pile_from_str(
+        #[case] input: &str,
+        #[case] width: usize,
+        #[case] height: usize,
+        #[case] padded_width: usize,
+    ) {
         let pile = PileOfPaperRolls::from_str(input.as_bytes());
-        assert_eq!(pile.width, 5);
-        assert_eq!(pile.height, 3);
-        assert_eq!(pile.padded_width, 32);
+        assert_eq!(pile.width, width);
+        assert_eq!(pile.height, height);
+        assert_eq!(pile.padded_width, padded_width);
     }
 }
