@@ -3,8 +3,7 @@ use wide::{CmpEq, CmpGt, i8x32};
 pub fn solve(input: &str) -> usize {
     let mut pile = PileOfPaperRolls::from_str(input.as_bytes());
     let params = ConvolutionParams {
-        center: b'@',
-        neighbour: b'@',
+        char: b'@',
         max_neighbours: 4,
     };
     pile.remove_all_accessible(&params)
@@ -12,8 +11,7 @@ pub fn solve(input: &str) -> usize {
 
 #[derive(Clone, Copy)]
 struct ConvolutionParams {
-    center: u8,
-    neighbour: u8,
+    char: u8,
     max_neighbours: usize,
 }
 
@@ -76,6 +74,7 @@ impl PileOfPaperRolls {
         let below = row_offset(2);
 
         // laad de 3x3 kernel als SIMD vectoren
+        // dit laadt dus 9x32 cellen tegelijk
         let neighbours = [
             load(&self.grid, above - 1),
             load(&self.grid, above),
@@ -88,32 +87,27 @@ impl PileOfPaperRolls {
         ];
         let center_cells = load(&self.grid, center);
 
-        // maak een mask om enkel de neighbours te selecteren die overeenkomen met gegeven waarde
-        let neighbour_val = i8x32::splat(params.neighbour as i8);
-        // maak een mask om de gevonden neighbours naar 1 te converteren
-        // zodat ze opgeteld kunnen worden
+        // mask waarbij de hele vector de waarde van de char heeft
+        let char_mask = i8x32::splat(params.char as i8);
+        // mask waarbij de hele vector op 1 is gezet
         let one = i8x32::splat(1);
 
-        // check hoeveel buren overeenkomen met de waarde
-        // en doe vervolgens een bitwise and om het naar 1 te converteren
-        // en op te tellen
+        // check hoeveel neighbours overeenkomen met value
+        // en tel deze op door ze eerst te bitwise AND'en
         let neighbor_count = neighbours
             .into_iter()
-            .map(|v| v.simd_eq(neighbour_val) & one)
+            .map(|v| v.simd_eq(char_mask) & one)
             .reduce(|a, b| a + b)
             .unwrap();
 
-        // maak de mask die bepaalt wanneer teveel neighbours zijn gevonden
-        // en kijk of het gevonden getal onder de mask ligt
+        // check of het aantal neighbours onder de threshold ligt
         let max_val = i8x32::splat(params.max_neighbours as i8);
         let under_threshold = max_val.simd_gt(neighbor_count);
 
-        // maak de mask die bepaalt of de center cel overeenkomt met de verwachte
-        // waarde
-        let center_val = i8x32::splat(params.center as i8);
-        let center_matches = center_cells.simd_eq(center_val);
+        // check of de center cel overeenkomt met de waarde
+        let center_matches = center_cells.simd_eq(char_mask);
 
-        // combineer de masks om het uiteindelijke resultaat te bepalen
+        // combineer de masks om zo de leidende mask te maken voor verwijdering
         let result = under_threshold & center_matches;
         let mut mask = result.to_bitmask() & validity_mask;
         let count = mask.count_ones() as usize;
@@ -164,19 +158,19 @@ impl PileOfPaperRolls {
             for x in 1..=self.width {
                 let idx = y * self.padded_width + x;
 
-                if self.grid[idx] != params.center {
+                if self.grid[idx] != params.char {
                     continue;
                 }
 
                 let mut neighbours = 0;
-                neighbours += (self.grid[idx - self.padded_width - 1] == params.neighbour) as usize;
-                neighbours += (self.grid[idx - self.padded_width] == params.neighbour) as usize;
-                neighbours += (self.grid[idx - self.padded_width + 1] == params.neighbour) as usize;
-                neighbours += (self.grid[idx - 1] == params.neighbour) as usize;
-                neighbours += (self.grid[idx + 1] == params.neighbour) as usize;
-                neighbours += (self.grid[idx + self.padded_width - 1] == params.neighbour) as usize;
-                neighbours += (self.grid[idx + self.padded_width] == params.neighbour) as usize;
-                neighbours += (self.grid[idx + self.padded_width + 1] == params.neighbour) as usize;
+                neighbours += (self.grid[idx - self.padded_width - 1] == params.char) as usize;
+                neighbours += (self.grid[idx - self.padded_width] == params.char) as usize;
+                neighbours += (self.grid[idx - self.padded_width + 1] == params.char) as usize;
+                neighbours += (self.grid[idx - 1] == params.char) as usize;
+                neighbours += (self.grid[idx + 1] == params.char) as usize;
+                neighbours += (self.grid[idx + self.padded_width - 1] == params.char) as usize;
+                neighbours += (self.grid[idx + self.padded_width] == params.char) as usize;
+                neighbours += (self.grid[idx + self.padded_width + 1] == params.char) as usize;
 
                 if neighbours < params.max_neighbours {
                     to_remove.push(idx);
@@ -227,8 +221,7 @@ mod tests {
     fn removal_round(#[case] round: usize, #[case] expected_removed: usize) {
         let mut pile = PileOfPaperRolls::from_str(EXAMPLE.as_bytes());
         let params = ConvolutionParams {
-            center: b'@',
-            neighbour: b'@',
+            char: b'@',
             max_neighbours: 4,
         };
 
@@ -243,8 +236,7 @@ mod tests {
     fn remove_all(#[case] input: &str, #[case] expected_total: usize) {
         let mut pile = PileOfPaperRolls::from_str(input.as_bytes());
         let params = ConvolutionParams {
-            center: b'@',
-            neighbour: b'@',
+            char: b'@',
             max_neighbours: 4,
         };
         assert_eq!(pile.remove_all_accessible(&params), expected_total);
@@ -256,8 +248,7 @@ mod tests {
         let mut scalar_pile = PileOfPaperRolls::from_str(input.as_bytes());
         let mut simd_pile = PileOfPaperRolls::from_str(input.as_bytes());
         let params = ConvolutionParams {
-            center: b'@',
-            neighbour: b'@',
+            char: b'@',
             max_neighbours: 4,
         };
 
