@@ -17,22 +17,20 @@ struct PileOfPaperRolls {
 impl PileOfPaperRolls {
     const SIMD_WIDTH: usize = 32;
     const PROC_CELLS: usize = Self::SIMD_WIDTH - 2;
-    const VALIDITY_CHECK: u32 = 0x7FFFFFFE;  // alle bits minus de eerste en laatste want die excluden we met PROC_CELLS
+    const VALIDITY_CHECK: u32 = 0x3FFFFFFF;  // bits 0-29 (30 cells); bit 30-31 niet meegenomen voor rechter boundary
 
     fn from_str(grid: &[u8]) -> Self {
-        let width = dbg!(grid
+        let width = grid
             .iter()
             .position(|&b| b == b'\n')
-            .unwrap_or(grid.len()));
+            .unwrap_or(grid.len());
 
-        let stride = dbg!(width + 2);
+        let stride = width + 2;
 
-        let padded_width = dbg!((stride + Self::SIMD_WIDTH - 1) & !(Self::SIMD_WIDTH - 1));
+        let padded_width = (stride + Self::SIMD_WIDTH - 1) & !(Self::SIMD_WIDTH - 1);
         
-        let height = dbg!(grid.len() / (width + 1)); // +1 for newline
-        let padded_height = dbg!(height + 2);
-
-        dbg!(padded_width * padded_height);
+        let height = grid.len() / (width + 1); // +1 for newline
+        let padded_height = height + 2;
 
         let mut data = vec![b'.'; padded_width * padded_height];
         
@@ -41,8 +39,8 @@ impl PileOfPaperRolls {
             if line.is_empty() {
                 break;
             }
-            let start = dbg!((y + 1) * padded_width + 1); // +1 to skip the left and top padding
-            dbg!(&mut data[start..start + width].copy_from_slice(line));
+            let start = (y + 1) * padded_width + 1; // +1 to skip the left and top padding
+            let _ = &mut data[start..start + width].copy_from_slice(line);
         }
 
         PileOfPaperRolls {
@@ -99,7 +97,7 @@ impl PileOfPaperRolls {
         let mut count = 0;
 
         for y in 1..=self.height {
-            let mut x = 0;
+            let mut x = 1;
             while x + Self::PROC_CELLS <= self.width {
                 unsafe {
                     let ptr = self.grid.as_ptr();
@@ -171,11 +169,11 @@ impl PileOfPaperRolls {
                 x += Self::PROC_CELLS;
             }
 
-            if x < self.width {               
+            if x <= self.width {
                 // masked load because we might have less than PROC_CELLS remaining
 
-                let remaining = self.width - x;
-                let final_x = self.width - Self::PROC_CELLS;
+                let remaining = self.width - x + 1;
+                let final_x = x;
                 
                 unsafe {
                     let ptr = self.grid.as_ptr();
@@ -240,8 +238,7 @@ impl PileOfPaperRolls {
                     // combineer de masks via bitwise and
                     let result = _mm256_and_si256(neighbours_threshold, center_matches);
                     let mask = _mm256_movemask_epi8(result) as u32;
-                    let starting_bit = Self::PROC_CELLS - remaining + 1;
-                    let remainder_mask = Self::VALIDITY_CHECK & !((1u32 << starting_bit) - 1);
+                    let remainder_mask = (1u32 << remaining) - 1;
                     let matches = (mask & remainder_mask).count_ones() as usize;
 
                     count += matches;
