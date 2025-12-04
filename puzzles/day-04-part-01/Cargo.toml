@@ -1,11 +1,12 @@
 [package]
-name = "day-01-part-02"
-version = { workspace = true }
-edition = { workspace = true }
+name = "day-04-part-01"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 rayon.workspace = true
 mimalloc = { workspace = true, features = ["v3"] }
+wide.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
