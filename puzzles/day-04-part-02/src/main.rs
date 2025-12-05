@@ -1,7 +1,7 @@
 use day_04_part_02::solve;
 
 pub fn main() {
-    let input = std::fs::read_to_string("puzzles/day-04-part-01/input.txt").unwrap();
+    let input = std::fs::read_to_string("puzzles/day-04-part-02/input.txt").unwrap();
     let timer = std::time::Instant::now();
     let result = solve(&input);
     let elapsed = timer.elapsed();
