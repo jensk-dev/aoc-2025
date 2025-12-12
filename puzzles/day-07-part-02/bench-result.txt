@@ -1,0 +1,24 @@
+~/projects/aoc-2025 (main) $ cargo bench -p day-07-part-02
+    Finished `bench` profile [optimized] target(s) in 0.04s
+     Running unittests src/lib.rs (target/release/deps/day_07_part_02-e3d75b9c51c443f0)
+
+running 1 test
+test tests::solve_example ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/release/deps/day_07_part_02-0283c713a4eb9738)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running benches/solve_benchmark.rs (target/release/deps/solve_benchmark-bf9d92910a77cae5)
+Gnuplot not found, using plotters backend
+solve                   time:   [754.66 ns 755.13 ns 755.59 ns]
+                        change: [−0.4238% −0.3031% −0.1777%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 10 outliers among 500 measurements (2.00%)
+  2 (0.40%) low mild
+  5 (1.00%) high mild
+  3 (0.60%) high severe

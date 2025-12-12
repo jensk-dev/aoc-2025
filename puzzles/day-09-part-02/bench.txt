@@ -1,0 +1,53 @@
+~/projects/aoc-2025 (main) $ cargo bench -p day-09-part-02
+   Compiling day-09-part-02 v0.1.0 (/home/skrb/projects/aoc-2025/puzzles/day-09-part-02)
+    Finished `bench` profile [optimized] target(s) in 11.41s
+     Running unittests src/lib.rs (target/release/deps/day_09_part_02-a28dc22575806c12)
+
+running 28 tests
+test tests::coord_compressor::compress_maps_point_to_grid_indices::case_1 ... ignored
+test tests::coord_compressor::compress_maps_point_to_grid_indices::case_2 ... ignored
+test tests::coord_compressor::compress_maps_point_to_grid_indices::case_3 ... ignored
+test tests::coord_compressor::compress_maps_point_to_grid_indices::case_4 ... ignored
+test tests::coord_compressor::compress_maps_point_to_grid_indices::case_5 ... ignored
+test tests::coord_compressor::compress_x_maps_to_sorted_index::case_1 ... ignored
+test tests::coord_compressor::compress_x_maps_to_sorted_index::case_2 ... ignored
+test tests::coord_compressor::compress_x_maps_to_sorted_index::case_3 ... ignored
+test tests::coord_compressor::compress_y_maps_to_sorted_index::case_1 ... ignored
+test tests::coord_compressor::compress_y_maps_to_sorted_index::case_2 ... ignored
+test tests::coord_compressor::compress_y_maps_to_sorted_index::case_3 ... ignored
+test tests::coord_compressor::dimensions_equal_unique_coordinate_count::case_1 ... ignored
+test tests::coord_compressor::dimensions_equal_unique_coordinate_count::case_2 ... ignored
+test tests::coord_compressor::dimensions_equal_unique_coordinate_count::case_3 ... ignored
+test tests::coord_compressor::dimensions_equal_unique_coordinate_count::case_4 ... ignored
+test tests::coord_compressor::duplicate_points_are_deduplicated::case_1 ... ignored
+test tests::coord_compressor::duplicate_points_are_deduplicated::case_2 ... ignored
+test tests::coord_compressor::large_coordinates_compress_to_small_indices::case_1 ... ignored
+test tests::coord_compressor::large_coordinates_compress_to_small_indices::case_2 ... ignored
+test tests::grid_new_works ... ignored
+test tests::parse_input_works ... ignored
+test tests::parse_point_works ... ignored
+test tests::rect::dimensions ... ignored
+test tests::rect::from_corners_normalizes_order ... ignored
+test tests::rect::single_point_rect ... ignored
+test tests::solve_example ... ignored
+test tests::point::from_tuple ... ignored
+test tests::point::offset_adds_to_coordinates ... ignored
+
+test result: ok. 0 passed; 0 failed; 28 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/release/deps/day_09_part_02-09206e71e59fe5c3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running benches/solve_benchmark.rs (target/release/deps/solve_benchmark-1177d5fc9eb94624)
+Gnuplot not found, using plotters backend
+solve                   time:   [291.26 µs 291.42 µs 291.59 µs]
+                        change: [−15.535% −15.376% −15.217%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 15 outliers among 500 measurements (3.00%)
+  1 (0.20%) low severe
+  1 (0.20%) low mild
+  10 (2.00%) high mild
+  3 (0.60%) high severe

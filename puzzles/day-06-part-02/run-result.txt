@@ -1,0 +1,5 @@
+~/projects/aoc-2025 (main) $ cargo run --release --bin day-06-part-02
+   Compiling day-06-part-02 v0.1.0 (/home/skrb/projects/aoc-2025/puzzles/day-06-part-02)
+    Finished `release` profile [optimized] target(s) in 1.51s
+     Running `target/release/day-06-part-02`
+Elapsed time: 27.928µs

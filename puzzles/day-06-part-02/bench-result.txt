@@ -1,0 +1,42 @@
+~/projects/aoc-2025 (main) $ cargo bench -p day-06-part-02
+    Finished `bench` profile [optimized] target(s) in 0.02s
+     Running unittests src/lib.rs (target/release/deps/day_06_part_02-bc46f2b9afb2dc74)
+
+running 19 tests
+test tests::bytes_tests::byte_constants_are_correct ... ignored
+test tests::integration_tests::solve_example ... ignored
+test tests::operator_tests::add_apply_sums_values ... ignored
+test tests::operator_tests::add_identity_is_zero ... ignored
+test tests::operator_tests::multiply_apply_multiplies_values ... ignored
+test tests::operator_tests::multiply_identity_is_one ... ignored
+test tests::operator_tests::new_preserves_fields ... ignored
+test tests::worksheet_computation_tests::all_add_operators ... ignored
+test tests::worksheet_computation_tests::all_multiply_operators ... ignored
+test tests::worksheet_computation_tests::handles_spaces_in_numbers ... ignored
+test tests::worksheet_computation_tests::multiple_columns_mixed_operators ... ignored
+test tests::worksheet_computation_tests::single_digit_add_column ... ignored
+test tests::worksheet_computation_tests::single_digit_multiply_column ... ignored
+test tests::worksheet_computation_tests::two_digit_add_column ... ignored
+test tests::worksheet_computation_tests::two_digit_multiply_column ... ignored
+test tests::worksheet_parsing_tests::calculates_correct_dimensions ... ignored
+test tests::worksheet_parsing_tests::parses_multiple_operators ... ignored
+test tests::worksheet_parsing_tests::parses_single_add_column ... ignored
+test tests::worksheet_parsing_tests::parses_single_multiply_column ... ignored
+
+test result: ok. 0 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/release/deps/day_06_part_02-132b65a29a83cd31)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running benches/solve_benchmark.rs (target/release/deps/solve_benchmark-5595d31803b1791f)
+Gnuplot not found, using plotters backend
+solve                   time:   [8.0999 µs 8.2021 µs 8.2982 µs]
+                        change: [−8.0422% −7.2963% −6.5341%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 15 outliers among 100 measurements (15.00%)
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+  12 (12.00%) high severe

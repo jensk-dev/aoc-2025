@@ -1,0 +1,4 @@
+~/projects/aoc-2025 (main) $ cargo run --release --bin day-07-part-02
+    Finished `release` profile [optimized] target(s) in 0.01s
+     Running `target/release/day-07-part-02`
+Elapsed time: 7.779µs

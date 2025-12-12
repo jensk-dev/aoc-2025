@@ -1,0 +1,17 @@
+[package]
+name = "day-05-part-02"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rayon.workspace = true
+mimalloc = { workspace = true, features = ["v3"] }
+wide.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "solve_benchmark"
+harness = false

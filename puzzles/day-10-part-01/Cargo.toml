@@ -1,0 +1,18 @@
+[package]
+name = "day-10-part-01"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rayon.workspace = true
+mimalloc = { workspace = true, features = ["v3"] }
+wide.workspace = true
+indoc = "2.0.7"
+
+[dev-dependencies]
+rstest.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "solve_benchmark"
+harness = false
